@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IAS IQ — Your Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(120px,1fr)); gap:12px; margin-bottom:24px; }
+  .stat-card{
+    background:var(--paper); border:1px solid var(--line); border-radius:14px; padding:18px 16px; text-align:center;
+    box-shadow:0 1px 1px rgba(var(--shadow-c),0.03), 0 8px 18px rgba(var(--shadow-c),0.08);
+  }
+  .stat-value{ font-family:var(--font-display); font-size:26px; font-weight:700; color:var(--ink); }
+  .stat-label{ font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin-top:4px; }
+
+  .chart-card{ margin-bottom:24px; }
+  .chart-title{ font-family:var(--font-display); font-size:15px; font-weight:600; margin-bottom:14px; color:var(--ink); }
+  svg.trend text{ font-family:var(--font-mono); fill:var(--ink-soft); }
+
+  .history-item{
+    background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-bottom:10px;
+    cursor:pointer; transition:border-color .2s ease;
+  }
+  .history-item:hover{ border-color:var(--accent-2); }
+  .history-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .history-date{ font-family:var(--font-mono); font-size:12.5px; color:var(--ink-soft); }
+  .history-score{ font-family:var(--font-display); font-weight:700; font-size:16px; }
+  .history-score.good{ color:var(--good); }
+  .history-score.mid{ color:var(--gold); }
+  .history-score.low{ color:var(--bad); }
+  .history-detail{ display:none; margin-top:14px; padding-top:14px; border-top:1px dashed var(--line); }
+  .history-item.open .history-detail{ display:block; }
+
+  .analysis-item{ background:color-mix(in srgb, var(--paper) 97%, var(--ink) 2%); border:1px solid var(--line); border-left:4px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+  .analysis-item.correct{ border-left-color:var(--good); }
+  .analysis-item.wrong{ border-left-color:var(--bad); }
+  .analysis-item.skipped{ border-left-color:var(--skip); }
+  .analysis-q{ font-family:var(--font-display); font-size:14px; font-weight:600; color:var(--ink); margin-bottom:6px; line-height:1.5; }
+  .analysis-answers{ font-size:12.5px; margin:6px 0; line-height:1.7; }
+  .analysis-answers .wrong-text{ color:var(--bad); }
+  .analysis-answers .correct-text{ color:var(--good); font-weight:600; }
+  .analysis-explanation{ font-size:12.5px; line-height:1.6; color:var(--ink-soft); margin-top:6px; padding-top:8px; border-top:1px dashed var(--line); }
+
+  .state-box{ text-align:center; padding:50px 20px; }
+  .state-box .icon{ font-size:34px; margin-bottom:14px; }
+  .state-box h3{ font-family:var(--font-display); margin:0 0 8px; }
+  .state-box p{ color:var(--ink-soft); font-size:14px; margin:0; }
+</style>
+</head>
+<body>
+
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="theme-toggle" role="group" aria-label="Study hour theme">
+    <button id="btn-dawn" class="active" onclick="setTheme('dawn')">☀ EARLY RISER</button>
+    <button id="btn-dusk" onclick="setTheme('dusk')">☾ NIGHT OWL</button>
+  </div>
+
+  <header>
+    <div class="eyebrow">IAS IQ · Performance Analysis</div>
+    <h1>Your Dashboard</h1>
+  </header>
+
+  <div class="navbar">
+    <span class="brand" id="welcomeName">Loading...</span>
+    <div class="links">
+      <a href="quiz.html">Today's test</a>
+      <button onclick="logout()">Log out</button>
+    </div>
+  </div>
+
+  <main>
+    <div id="loadingState" class="state-box">
+      <div class="icon">⏳</div><h3>Crunching your numbers...</h3>
+    </div>
+
+    <div id="emptyState" class="state-box face" style="display:none;">
+      <div class="icon">📊</div>
+      <h3>No attempts yet</h3>
+      <p>Take today's test and your stats will show up here.</p>
+      <button class="restart-btn" style="margin-top:18px; background:var(--ink); color:var(--paper); border:none; padding:14px 26px; border-radius:12px; font-weight:600; cursor:pointer;" onclick="window.location.href='quiz.html'">Go to today's test</button>
+    </div>
+
+    <div id="dashContent" style="display:none;">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-value" id="statAvg">0%</div><div class="stat-label">Avg. Score</div></div>
+        <div class="stat-card"><div class="stat-value" id="statTests">0</div><div class="stat-label">Tests Taken</div></div>
+        <div class="stat-card"><div class="stat-value" id="statStreak">0</div><div class="stat-label">Day Streak</div></div>
+        <div class="stat-card"><div class="stat-value" id="statBest">0</div><div class="stat-label">Best Score</div></div>
+      </div>
+
+      <div class="face chart-card">
+        <div class="chart-title">Score trend (last 14 tests)</div>
+        <div id="chartWrap"></div>
+      </div>
+
+      <div class="analysis-heading" style="font-family:var(--font-display); font-size:15px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.08em; margin:0 0 14px 4px;">Test history</div>
+      <div id="historyList"></div>
+    </div>
+  </main>
+
+  <footer>Track your progress, one test at a time.</footer>
+
+  <script>
+    const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    let currentUser = null;
+
+    function setTheme(name){
+      if (name === 'dusk') document.body.setAttribute('data-theme', 'dusk');
+      else document.body.removeAttribute('data-theme');
+      document.getElementById('btn-dawn').classList.toggle('active', name === 'dawn');
+      document.getElementById('btn-dusk').classList.toggle('active', name === 'dusk');
+      localStorage.setItem('iasiq-theme', name);
+    }
+    (function(){ const saved = localStorage.getItem('iasiq-theme'); if (saved) setTheme(saved); })();
+
+    async function logout(){ await supabase.auth.signOut(); window.location.href = 'index.html'; }
+
+    function fmtDate(d){
+      return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+    }
+
+    function computeStreak(attemptsSorted){
+      // attemptsSorted: newest first, unique by date
+      let streak = 0;
+      let cursor = new Date(); cursor.setHours(0,0,0,0);
+      for (const a of attemptsSorted){
+        const d = new Date(a.date + 'T00:00:00');
+        const diffDays = Math.round((cursor - d) / 86400000);
+        if (diffDays === 0 || diffDays === 1){
+          streak++;
+          cursor = d;
+        } else break;
+      }
+      return streak;
+    }
+
+    function renderChart(attemptsChrono){
+      const wrap = document.getElementById('chartWrap');
+      const data = attemptsChrono.slice(-14);
+      if (!data.length){ wrap.innerHTML = ''; return; }
+
+      const w = 600, h = 200, pad = 30;
+      const maxTotal = Math.max(...data.map(a => a.total), 1);
+      const stepX = data.length > 1 ? (w - pad * 2) / (data.length - 1) : 0;
+
+      const points = data.map((a, i) => {
+        const x = pad + i * stepX;
+        const pct = a.total ? a.correct / a.total : 0;
+        const y = h - pad - pct * (h - pad * 2);
+        return { x, y, a };
+      });
+
+      const pathD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+      const areaD = pathD + ' L' + points[points.length-1].x.toFixed(1) + ',' + (h-pad) + ' L' + points[0].x.toFixed(1) + ',' + (h-pad) + ' Z';
+
+      let svg = '<svg class="trend" viewBox="0 0 ' + w + ' ' + h + '" width="100%" style="max-width:100%; height:auto;">';
+      svg += '<line x1="' + pad + '" y1="' + (h-pad) + '" x2="' + (w-pad) + '" y2="' + (h-pad) + '" stroke="var(--line)" stroke-width="1"/>';
+      svg += '<path d="' + areaD + '" fill="color-mix(in srgb, var(--accent-2) 14%, transparent)" stroke="none"/>';
+      svg += '<path d="' + pathD + '" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+      points.forEach(p => {
+        svg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="var(--paper)" stroke="var(--accent-2)" stroke-width="2"><title>' +
+               fmtDate(p.a.date) + ': ' + p.a.correct + '/' + p.a.total + '</title></circle>';
+      });
+      if (points.length){
+        svg += '<text x="' + points[0].x + '" y="' + (h-8) + '" font-size="9" text-anchor="start">' + fmtDate(points[0].a.date) + '</text>';
+        svg += '<text x="' + points[points.length-1].x + '" y="' + (h-8) + '" font-size="9" text-anchor="end">' + fmtDate(points[points.length-1].a.date) + '</text>';
+      }
+      svg += '</svg>';
+      wrap.innerHTML = svg;
+    }
+
+    function scoreClass(correct, total){
+      const pct = total ? correct/total : 0;
+      if (pct >= 0.7) return 'good';
+      if (pct >= 0.4) return 'mid';
+      return 'low';
+    }
+
+    function renderHistory(attemptsDesc){
+      const list = document.getElementById('historyList');
+      list.innerHTML = '';
+      attemptsDesc.forEach(a => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML =
+          '<div class="history-top">' +
+            '<span class="history-date">' + fmtDate(a.date) + '</span>' +
+            '<span class="history-score ' + scoreClass(a.correct, a.total) + '">' + a.correct + ' / ' + a.total + '</span>' +
+          '</div>' +
+          '<div class="history-detail"></div>';
+        item.addEventListener('click', () => {
+          const wasOpen = item.classList.contains('open');
+          document.querySelectorAll('.history-item.open').forEach(el => el.classList.remove('open'));
+          if (!wasOpen){
+            item.classList.add('open');
+            const detailEl = item.querySelector('.history-detail');
+            if (!detailEl.dataset.built){
+              detailEl.innerHTML = buildReviewHTML(a);
+              detailEl.dataset.built = '1';
+            }
+          }
+        });
+        list.appendChild(item);
+      });
+    }
+
+    function buildReviewHTML(attempt){
+      const snapshot = attempt.questions_snapshot || [];
+      const given = attempt.answers || [];
+      let html = '';
+      snapshot.forEach((q, i) => {
+        const g = given[i];
+        let status = g === null || g === undefined ? 'skipped' : (g === q.correct ? 'correct' : 'wrong');
+        const yourAnswerLabel = g ? g + ') ' + (q.options.find(o => o[0] === g)?.[1] || '') : 'Not answered';
+        html += '<div class="analysis-item ' + status + '">' +
+          '<div class="analysis-q">' + q.text + '</div>' +
+          '<div class="analysis-answers">Your answer: <span class="' + (status==='wrong'?'wrong-text':'') + '">' + yourAnswerLabel + '</span><br>' +
+          'Correct answer: <span class="correct-text">' + q.correctText + '</span></div>' +
+          '<div class="analysis-explanation">' + q.explanation + '</div>' +
+        '</div>';
+      });
+      return html || '<p style="color:var(--ink-soft); font-size:13px;">No detail saved for this attempt.</p>';
+    }
+
+    async function init(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session){ window.location.href = 'index.html'; return; }
+      currentUser = session.user;
+      document.getElementById('welcomeName').textContent = 'Hi, ' + (currentUser.user_metadata?.display_name || currentUser.email);
+
+      const { data: attempts, error } = await supabase
+        .from('attempts').select('*')
+        .eq('user_id', currentUser.id)
+        .order('date', { ascending: false });
+
+      document.getElementById('loadingState').style.display = 'none';
+
+      if (error || !attempts || !attempts.length){
+        document.getElementById('emptyState').style.display = '';
+        return;
+      }
+
+      document.getElementById('dashContent').style.display = '';
+
+      const totalTests = attempts.length;
+      const avgPct = Math.round(100 * attempts.reduce((s,a) => s + (a.total ? a.correct/a.total : 0), 0) / totalTests);
+      const best = Math.max(...attempts.map(a => a.correct));
+      const streak = computeStreak(attempts); // already newest-first
+
+      document.getElementById('statAvg').textContent = avgPct + '%';
+      document.getElementById('statTests').textContent = totalTests;
+      document.getElementById('statStreak').textContent = streak;
+      document.getElementById('statBest').textContent = best;
+
+      const chrono = [...attempts].reverse();
+      renderChart(chrono);
+      renderHistory(attempts);
+    }
+
+    init();
+  </script>
+</body>
+</html>
