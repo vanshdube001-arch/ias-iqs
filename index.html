@@ -68,7 +68,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
     document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
@@ -92,7 +92,7 @@
     function showLogin(){ clearError(); document.getElementById('signupForm').style.display='none'; document.getElementById('loginForm').style.display=''; }
 
     // If already logged in, skip straight to quiz
-    supabase.auth.getSession().then(({ data }) => {
+    sb.auth.getSession().then(({ data }) => {
       if (data.session) window.location.href = 'quiz.html';
     });
 
@@ -103,7 +103,7 @@
       btn.disabled = true; btn.textContent = 'Logging in...';
       const email = document.getElementById('loginEmail').value.trim();
       const password = document.getElementById('loginPassword').value;
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await sb.auth.signInWithPassword({ email, password });
       btn.disabled = false; btn.textContent = 'Log in';
       if (error){ showError(error.message); return; }
       window.location.href = 'quiz.html';
@@ -117,7 +117,7 @@
       const name = document.getElementById('signupName').value.trim();
       const email = document.getElementById('signupEmail').value.trim();
       const password = document.getElementById('signupPassword').value;
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await sb.auth.signUp({
         email, password,
         options: { data: { display_name: name } }
       });

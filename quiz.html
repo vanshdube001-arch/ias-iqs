@@ -224,7 +224,7 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
     let questions = [];
     let answers = [];
     let currentIndex = 0;
@@ -243,7 +243,7 @@
     (function(){ const saved = localStorage.getItem('iasiq-theme'); if (saved) setTheme(saved); })();
 
     async function logout(){
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
       window.location.href = 'index.html';
     }
 
@@ -254,13 +254,13 @@
     }
 
     async function init(){
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await sb.auth.getSession();
       if (!session){ window.location.href = 'index.html'; return; }
       currentUser = session.user;
       document.getElementById('welcomeName').textContent = 'Hi, ' + (currentUser.user_metadata?.display_name || currentUser.email);
 
       // Has the user already attempted today?
-      const { data: existingAttempt } = await supabase
+      const { data: existingAttempt } = await sb
         .from('attempts').select('*')
         .eq('user_id', currentUser.id).eq('date', todayStr)
         .maybeSingle();
@@ -273,7 +273,7 @@
       }
 
       // Fetch today's question set
-      const { data: qRow, error } = await supabase
+      const { data: qRow, error } = await sb
         .from('questions_daily').select('*')
         .eq('date', todayStr).maybeSingle();
 
@@ -403,7 +403,7 @@
 
       // Persist attempt (snapshot of questions included so the dashboard can
       // always show a full review even if questions_daily rows get cleaned up)
-      await supabase.from('attempts').insert({
+      await sb.from('attempts').insert({
         user_id: currentUser.id,
         date: todayStr,
         score: correctCount,

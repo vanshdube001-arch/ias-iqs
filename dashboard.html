@@ -108,7 +108,7 @@
   <footer>Track your progress, one test at a time.</footer>
 
   <script>
-    const supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
     let currentUser = null;
 
     function setTheme(name){
@@ -120,7 +120,7 @@
     }
     (function(){ const saved = localStorage.getItem('iasiq-theme'); if (saved) setTheme(saved); })();
 
-    async function logout(){ await supabase.auth.signOut(); window.location.href = 'index.html'; }
+    async function logout(){ await sb.auth.signOut(); window.location.href = 'index.html'; }
 
     function fmtDate(d){
       return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
@@ -230,12 +230,12 @@
     }
 
     async function init(){
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await sb.auth.getSession();
       if (!session){ window.location.href = 'index.html'; return; }
       currentUser = session.user;
       document.getElementById('welcomeName').textContent = 'Hi, ' + (currentUser.user_metadata?.display_name || currentUser.email);
 
-      const { data: attempts, error } = await supabase
+      const { data: attempts, error } = await sb
         .from('attempts').select('*')
         .eq('user_id', currentUser.id)
         .order('date', { ascending: false });

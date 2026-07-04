@@ -5,5 +5,5 @@
 // works within the permission rules (RLS policies) set up by
 // supabase-schema.sql
 // ============================================================
-window.SUPABASE_URL = "https://wjlemlefriruorqcsuwq.supabase.co";
-window.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqbGVtbGVmcmlydW9ycWNzdXdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxNDUxNzgsImV4cCI6MjA5ODcyMTE3OH0.IGdc4bVopBqLI-OkwnNkQXBamsWRLPUkst2ta8PF_WE";
+window.SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+window.SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
