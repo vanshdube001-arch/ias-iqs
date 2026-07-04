@@ -149,6 +149,7 @@
   <div class="navbar">
     <span class="brand" id="welcomeName">Loading...</span>
     <div class="links">
+      <a href="select-quiz.html">Change date</a>
       <a href="dashboard.html">Dashboard</a>
       <button onclick="logout()">Log out</button>
     </div>
@@ -164,15 +165,17 @@
 
     <div id="notReadyState" class="state-box face" style="display:none;">
       <div class="icon">🕕</div>
-      <h3>Today's set isn't ready yet</h3>
-      <p>New questions drop daily around 6 AM. Check back shortly, or try the dashboard to review past tests.</p>
+      <h3 id="notReadyTitle">This set isn't ready yet</h3>
+      <p>New questions drop daily around 6 AM. Check back shortly, or pick a different date.</p>
+      <button class="restart-btn" onclick="window.location.href='select-quiz.html'">Choose another date</button>
     </div>
 
     <div id="alreadyDoneState" class="state-box face" style="display:none;">
       <div class="icon">✅</div>
-      <h3>You've already completed today's test</h3>
+      <h3 id="alreadyDoneTitle">You've already completed this test</h3>
       <p id="alreadyDoneScore" style="margin-bottom:18px;"></p>
       <button class="restart-btn" onclick="window.location.href='dashboard.html'">View on dashboard</button>
+      <button class="restart-btn" style="background:transparent; border:1.5px solid var(--line); color:var(--ink-soft); margin-left:10px;" onclick="window.location.href='select-quiz.html'">Choose another date</button>
     </div>
 
     <div id="quizView" style="display:none;">
@@ -229,9 +232,14 @@
     let answers = [];
     let currentIndex = 0;
     let currentUser = null;
-    let todayStr = new Date().toISOString().slice(0,10); // YYYY-MM-DD
 
-    document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    const realTodayStr = new Date().toISOString().slice(0,10); // YYYY-MM-DD
+    const urlParams = new URLSearchParams(window.location.search);
+    let requestedDate = urlParams.get('date');
+    // Never allow picking a date in the future
+    let todayStr = (requestedDate && requestedDate <= realTodayStr) ? requestedDate : realTodayStr;
+
+    document.getElementById('todayDate').textContent = new Date(todayStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
     function setTheme(name){
       if (name === 'dusk') document.body.setAttribute('data-theme', 'dusk');
@@ -265,19 +273,23 @@
         .eq('user_id', currentUser.id).eq('date', todayStr)
         .maybeSingle();
 
+      const niceDate = new Date(todayStr + 'T00:00:00').toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+
       if (existingAttempt){
+        document.getElementById('alreadyDoneTitle').textContent = "You've already completed the " + niceDate + ' test';
         showState('alreadyDoneState');
         document.getElementById('alreadyDoneScore').textContent =
           'Score: ' + existingAttempt.correct + ' / ' + existingAttempt.total + ' correct';
         return;
       }
 
-      // Fetch today's question set
+      // Fetch the requested date's question set
       const { data: qRow, error } = await sb
         .from('questions_daily').select('*')
         .eq('date', todayStr).maybeSingle();
 
       if (error || !qRow || !qRow.questions || !qRow.questions.length){
+        document.getElementById('notReadyTitle').textContent = 'No test found for ' + niceDate;
         showState('notReadyState');
         return;
       }

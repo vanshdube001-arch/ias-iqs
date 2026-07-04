@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate": "node scripts/generate-questions.mjs"
+    "generate": "node scripts/generate-questions.mjs",
+    "generate:local": "node --env-file=.env scripts/generate-questions.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0"
